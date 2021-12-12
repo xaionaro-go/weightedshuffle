@@ -1,4 +1,4 @@
-module github.com/xaionaro-go/weightedrandsort
+module github.com/xaionaro-go/weightedshuffle
 
 go 1.16
 

@@ -1,4 +1,4 @@
-package weightedrandsort
+package weightedshuffle
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-// ReorderInplace randomly sorts the slice with the preference to put first items with
+// ShuffleInplace randomly reorders the slice with the preference to put first items with
 // higher weight.
 //
 // The first played out position is 0th and the probability to take the position is
@@ -24,7 +24,7 @@ import (
 //
 // It is not recommended to use this method if there are more than 100 items in the slice.
 // Use method Reorder, instead.
-func ReorderInplace(
+func ShuffleInplace(
 	slice interface{},
 	weight func(i int) float64,
 	randSource rand.Source,
@@ -35,10 +35,13 @@ func ReorderInplace(
 		return
 	}
 	var randFloat64 func() float64
+	var randShuffle func(n int, swap func(i, j int))
 	if randSource != nil {
 		randFloat64 = rand.New(randSource).Float64
+		randShuffle = rand.New(randSource).Shuffle
 	} else {
 		randFloat64 = rand.Float64
+		randShuffle = rand.Shuffle
 	}
 
 	weightSum := float64(0)
@@ -52,6 +55,7 @@ func ReorderInplace(
 
 	for baseIdx := 0; baseIdx < length; baseIdx++ {
 		randWeightSum := randFloat64() * weightSum
+		randWeightSumOrig := randWeightSum
 		for swapIdx := baseIdx; swapIdx < length; swapIdx++ {
 			w := weight(swapIdx)
 			randWeightSum -= w
@@ -63,6 +67,13 @@ func ReorderInplace(
 				}
 				break
 			}
+		}
+		if randWeightSum == randWeightSumOrig {
+			// only zero-weight items left, just use shuffle:
+			randShuffle(length-baseIdx, func(i, j int) {
+				swap(baseIdx+i, baseIdx+j)
+			})
+			break
 		}
 	}
 }

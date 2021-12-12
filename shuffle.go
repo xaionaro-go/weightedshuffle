@@ -1,4 +1,4 @@
-package weightedrandsort
+package weightedshuffle
 
 import (
 	"math/rand"
@@ -6,32 +6,32 @@ import (
 	"sort"
 )
 
-type sortWrapper struct {
+type randWeightSortWrapper struct {
 	slice   interface{}
 	swap    func(i, j int)
 	length  int
 	weights []float64
 }
 
-func (s *sortWrapper) Len() int {
+func (s *randWeightSortWrapper) Len() int {
 	return s.length
 }
 
-func (s *sortWrapper) Less(i, j int) bool {
+func (s *randWeightSortWrapper) Less(i, j int) bool {
 	return s.weights[i] > s.weights[j]
 }
 
-func (s *sortWrapper) Swap(i, j int) {
+func (s *randWeightSortWrapper) Swap(i, j int) {
 	s.swap(i, j)
 	s.weights[i], s.weights[j] = s.weights[j], s.weights[i]
 }
 
-func newSortWrapper(
+func newRandWeightSortWrapper(
 	slice interface{},
 	weight func(i int) float64,
 	randSource rand.Source,
-) *sortWrapper {
-	length := reflect.ValueOf(slice).Len()
+) (*randWeightSortWrapper, interface{}) {
+	fullLength := reflect.ValueOf(slice).Len()
 	swap := reflect.Swapper(slice)
 	var randFloat64 func() float64
 	if randSource != nil {
@@ -40,20 +40,33 @@ func newSortWrapper(
 		randFloat64 = rand.Float64
 	}
 
-	weightByIndex := make([]float64, length)
+	length := fullLength
+	var weightByIndex []float64
 	for idx := 0; idx < length; idx++ {
-		weightByIndex[idx] = weight(idx) * randFloat64()
+		w := weight(idx)
+		if w == 0 {
+			swap(idx, length-1)
+			length--
+			idx--
+			continue
+		}
+		weightByIndex = append(weightByIndex, w*randFloat64())
 	}
 
-	return &sortWrapper{
+	var unweightedSlice interface{}
+	if length != fullLength {
+		unweightedSlice = reflect.ValueOf(slice).Slice(length, fullLength).Interface()
+	}
+
+	return &randWeightSortWrapper{
 		slice:   slice,
 		swap:    swap,
 		length:  length,
 		weights: weightByIndex,
-	}
+	}, unweightedSlice
 }
 
-// Reorder randomly sorts the slice with the preference to put first items with
+// Shuffle randomly reorders the slice with the preference to put first items with
 // higher weight.
 //
 // Basically, instead of this function: you may just calculate randomized
@@ -67,11 +80,14 @@ func newSortWrapper(
 //
 // T: O(n * log(n))
 // S: O(n)
-func Reorder(
+func Shuffle(
 	slice interface{},
 	weight func(i int) float64,
 	randSource rand.Source,
 ) {
-	s := newSortWrapper(slice, weight, randSource)
-	sort.Sort(s)
+	weightedSliceWrapper, unweightedSlice := newRandWeightSortWrapper(slice, weight, randSource)
+	sort.Sort(weightedSliceWrapper)
+	if unweightedSlice != nil {
+		rand.Shuffle(reflect.ValueOf(unweightedSlice).Len(), reflect.Swapper(unweightedSlice))
+	}
 }
