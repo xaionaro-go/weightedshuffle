@@ -4,7 +4,7 @@
 
 This package allows to (semi-)randomly order a slice with weight-based preference to get closer to the beginning of the slice.
 
-For example, slice `[1, 2, 3, 4]` with weights `[0, 1, 9, 10]` most likely with result into `[4, 3, 2, 1]` or `[3, 4, 2, 1]`:
+For example, slice `[1, 2, 3, 4]` with weights `[0, 1, 9, 10]` most likely will result into `[4, 3, 2, 1]` or `[3, 4, 2, 1]`:
 * `1` is always in the end because it has zero-weight,
 * `2` most likely goes after `3` and `4` because it has much lower weight
 * while `4` and `3` have almost the same weight so they will have quite random order relatively to each other.
